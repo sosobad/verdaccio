@@ -12,17 +12,20 @@ import Info from '@material-ui/icons/Info';
 import Help from '@material-ui/icons/Help';
 import Tooltip from '@material-ui/core/Tooltip/index';
 import AccountCircle from '@material-ui/icons/AccountCircle';
+import InputAdornment from '@material-ui/core/InputAdornment';
+import { default as IconSearch } from '@material-ui/icons/Search';
 
 import { getRegistryURL } from '../../utils/url';
 import Link from '../Link';
 import Logo from '../Logo';
-import Label from '../Label';
 import CopyToClipBoard from '../CopyToClipBoard/index';
 import RegistryInfoDialog from '../RegistryInfoDialog';
+import AutoComplete from '../AutoComplete';
 
 import type { Node } from 'react';
 import { IProps, IState } from './interfaces';
-import { Wrapper, InnerWrapper, Greetings } from './styles';
+import colors from '../../utils/styles/colors';
+import { NavBar, InnerNavBar, MobileNavBar, InnerMobileNavBar, LeftSide, RightSide, Search, IconSearchButton } from './styles';
 
 class Header extends Component<IProps, IState> {
   handleLoggedInMenu: Function;
@@ -32,18 +35,24 @@ class Header extends Component<IProps, IState> {
   handleToggleLogin: Function;
   renderInfoDialog: Function;
 
-  constructor(props: Object) {
+  constructor(props: IProps) {
     super(props);
-    this.handleLoggedInMenu = this.handleLoggedInMenu.bind(this);
-    this.handleLoggedInMenuClose = this.handleLoggedInMenuClose.bind(this);
-    this.handleOpenRegistryInfoDialog = this.handleOpenRegistryInfoDialog.bind(this);
-    this.handleCloseRegistryInfoDialog = this.handleCloseRegistryInfoDialog.bind(this);
-    this.handleToggleLogin = this.handleToggleLogin.bind(this);
-    this.renderInfoDialog = this.renderInfoDialog.bind(this);
     this.state = {
       openInfoDialog: false,
       registryUrl: '',
+      packages: props.packages,
+      showMobileNavBar: false,
     };
+  }
+
+  static getDerivedStateFromProps(nextProps: IProps, prevState: IState) {
+    if (nextProps.packages !== prevState.packages) {
+      return {
+        packages: nextProps.packages,
+      };
+    }
+
+    return null;
   }
 
   componentDidMount() {
@@ -56,65 +65,100 @@ class Header extends Component<IProps, IState> {
   /**
    * opens popover menu for logged in user.
    */
-  handleLoggedInMenu(event: SyntheticEvent<HTMLElement>) {
+  handleLoggedInMenu = (event: SyntheticEvent<HTMLElement>) => {
     this.setState({
       anchorEl: event.currentTarget,
     });
-  }
+  };
 
   /**
    * closes popover menu for logged in user
    */
-  handleLoggedInMenuClose() {
+  handleLoggedInMenuClose = () => {
     this.setState({
       anchorEl: null,
     });
-  }
+  };
 
   /**
    * opens registry information dialog.
    */
-  handleOpenRegistryInfoDialog() {
+  handleOpenRegistryInfoDialog = () => {
     this.setState({
       openInfoDialog: true,
     });
-  }
+  };
 
   /**
    * closes registry information dialog.
    */
-  handleCloseRegistryInfoDialog() {
+  handleCloseRegistryInfoDialog = () => {
     this.setState({
       openInfoDialog: false,
     });
-  }
+  };
 
   /**
    * close/open popover menu for logged in users.
    */
-  handleToggleLogin() {
+  handleToggleLogin = () => {
     this.setState(
       {
         anchorEl: null,
       },
       this.props.toggleLoginModal
     );
-  }
+  };
 
-  renderLeftSide(): Node {
-    const { registryUrl } = this.state;
+  handleToggleMNav = () => {
+    this.setState({
+      showMobileNavBar: !this.state.showMobileNavBar,
+    });
+  };
+
+  handleDismissMNav = () => {
+    this.setState({
+      showMobileNavBar: false,
+    });
+  };
+
+  renderLeftSide = (): Node => {
+    const { packages } = this.state;
+    const { onSearch, search, ...others } = this.props;
     return (
-      <a href={`${registryUrl}/#/`}>
-        <Logo />
-      </a>
+      <LeftSide>
+        <Link to="/">
+          <Logo />
+        </Link>
+        <Search>
+          <AutoComplete
+            suggestions={packages.map(pkage => ({ label: pkage }))}
+            onChange={onSearch}
+            value={search}
+            placeholder="Search packages"
+            color={colors.white}
+            startAdornment={
+              <InputAdornment position="start" style={{ color: colors.white }}>
+                <IconSearch />
+              </InputAdornment>
+            }
+            {...others}
+          />
+        </Search>
+      </LeftSide>
     );
-  }
+  };
 
-  renderRightSide(): Node {
+  renderRightSide = (): Node => {
     const { username = '' } = this.props;
     const installationLink = 'https://verdaccio.org/docs/en/installation';
     return (
-      <div>
+      <RightSide>
+        <Tooltip title="Search packages" disableFocusListener>
+          <IconSearchButton color="inherit" onClick={this.handleToggleMNav}>
+            <IconSearch />
+          </IconSearchButton>
+        </Tooltip>
         <Tooltip title="Documentation" disableFocusListener>
           <IconButton color="inherit" component={Link} to={installationLink} blank>
             <Help />
@@ -132,20 +176,20 @@ class Header extends Component<IProps, IState> {
             Login
           </Button>
         )}
-      </div>
+      </RightSide>
     );
-  }
+  };
 
   /**
    * render popover menu
    */
-  renderMenu(): Node {
-    const { handleLogout, username = '' } = this.props;
+  renderMenu = (): Node => {
+    const { onLogout } = this.props;
     const { anchorEl } = this.state;
     const open = Boolean(anchorEl);
     return (
       <React.Fragment>
-        <IconButton id="header--button-account" aria-owns="sidebar-menu" aria-haspopup="true" color="inherit" onClick={this.handleLoggedInMenu}>
+        <IconButton id="header--button-account" color="inherit" onClick={this.handleToggleMNav}>
           <AccountCircle />
         </IconButton>
         <Menu
@@ -162,19 +206,15 @@ class Header extends Component<IProps, IState> {
           open={open}
           onClose={this.handleLoggedInMenuClose}
         >
-          <MenuItem disabled>
-            <Greetings>{`Hi,`}</Greetings>
-            <Label text={username} limit={140} weight="bold" capitalize />
-          </MenuItem>
-          <MenuItem onClick={handleLogout} id="header--button-logout">
+          <MenuItem onClick={onLogout} id="header--button-logout">
             Logout
           </MenuItem>
         </Menu>
       </React.Fragment>
     );
-  }
+  };
 
-  renderInfoDialog(): Node {
+  renderInfoDialog = (): Node => {
     const { scope } = this.props;
     const { openInfoDialog, registryUrl } = this.state;
     return (
@@ -185,17 +225,38 @@ class Header extends Component<IProps, IState> {
         </div>
       </RegistryInfoDialog>
     );
-  }
+  };
 
   render() {
+    const { packages, showMobileNavBar } = this.state;
+    const { onSearch, search, ...others } = this.props;
     return (
-      <Wrapper position="static">
-        <InnerWrapper>
-          {this.renderLeftSide()}
-          {this.renderRightSide()}
-        </InnerWrapper>
-        {this.renderInfoDialog()}
-      </Wrapper>
+      <div>
+        <NavBar position="static">
+          <InnerNavBar>
+            {this.renderLeftSide()}
+            {this.renderRightSide()}
+          </InnerNavBar>
+          {this.renderInfoDialog()}
+        </NavBar>
+        {showMobileNavBar && (
+          <MobileNavBar>
+            <InnerMobileNavBar>
+              <AutoComplete
+                suggestions={packages.map(pkg => ({ label: pkg }))}
+                onChange={onSearch}
+                value={search}
+                placeholder="Search packages"
+                disableUnderline
+                {...others}
+              />
+            </InnerMobileNavBar>
+            <Button id="header--button-login" color="inherit" onClick={this.handleDismissMNav}>
+              Cancel
+            </Button>
+          </MobileNavBar>
+        )}
+      </div>
     );
   }
 }
