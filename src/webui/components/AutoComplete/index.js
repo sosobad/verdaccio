@@ -16,14 +16,13 @@ import { Wrapper, InputField } from './styles';
 import { IProps } from './interfaces';
 
 const renderInputComponent = (inputProps): Node => {
-  const { inputRef = () => {}, ref, startAdornment, disableUnderline, ...others } = inputProps;
+  const { ref, startAdornment, disableUnderline, ...others } = inputProps;
   return (
     <InputField
       fullWidth
       InputProps={{
         inputRef: node => {
           ref(node);
-          inputRef();
         },
         startAdornment,
         disableUnderline,
@@ -38,7 +37,6 @@ const getSuggestionValue = (suggestion): string => suggestion.label;
 const renderSuggestion = (suggestion, { query, isHighlighted }): Node => {
   const matches = match(suggestion.label, query);
   const parts = parse(suggestion.label, matches);
-
   return (
     <MenuItem selected={isHighlighted} component="div">
       <div>
@@ -68,6 +66,7 @@ const AutoComplete = ({
   placeholder = '',
   disableUnderline = false,
   color,
+  onClick,
 }: IProps): Node => {
   const autosuggestProps = {
     renderInputComponent,
@@ -76,6 +75,7 @@ const AutoComplete = ({
     renderSuggestion,
     onSuggestionsFetchRequested: onSuggestionsFetch,
     onSuggestionsClearRequested: onCleanSuggestions,
+    onSuggestionSelected: onClick,
   };
   return (
     <Wrapper>

@@ -11,33 +11,41 @@ class RouterApp extends Component {
   static propTypes = {
     isUserLoggedIn: PropTypes.bool
   };
+
   render() {
-    const {isUserLoggedIn, filteredPackages } = this.props;
+    const { onClick, onSuggestionsFetch, onCleanSuggestions, searchPackages, packages, ...others } = this.props;
     return (
       <Router>
-        <div className="container content">
           <Switch>
             <Route
               exact
               path="/"
-              render={() => <HomePage packages={filteredPackages} isUserLoggedIn={isUserLoggedIn} />}
+              render={() => (
+                <HomePage 
+                  {...others}
+                  onClick={onClick}
+                  onSuggestionsFetch={onSuggestionsFetch}
+                  onCleanSuggestions={onCleanSuggestions}
+                  searchPackages={searchPackages}
+                  packages={packages}
+                />
+              )}
             />
             <Route
               exact
               path="/detail/@:scope/:package"
               render={(props) => (
-                <DetailPackage {...props} isUserLoggedIn={isUserLoggedIn} />
+                <DetailPackage {...props} {...others} />
               )}
             />
             <Route
               exact
               path="/detail/:package"
               render={(props) => (
-                <DetailPackage {...props} isUserLoggedIn={isUserLoggedIn} />
+                <DetailPackage {...props} {...others} />
               )}
             />
           </Switch>
-        </div>
       </Router>
     );
   }

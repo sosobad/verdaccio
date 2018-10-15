@@ -14,7 +14,6 @@ import storage from './utils/storage';
 import logo from './utils/logo';
 import { makeLogin, isTokenExpire } from './utils/login';
 
-import Header from './components/Header';
 import Footer from './components/Footer';
 import Spinner from './components/Spinner';
 import LoginModal from './components/Login';
@@ -34,6 +33,7 @@ export default class App extends Component {
     showLoginModal: false,
     isUserLoggedIn: false,
     packages: [],
+    searchPackages: [],
     filteredPackages: [],
     search: "",
     isLoading: false,
@@ -53,16 +53,14 @@ export default class App extends Component {
     await this.setLoading(false);
   }
 
-  loadLogo = async () => {
-   return (
-     new Promise( async resolve => {
+  loadLogo = async () => (
+    new Promise( async resolve => {
       const logoUrl = await logo();
       this.setState({ 
         logoUrl 
       }, () => resolve());
      })
-   );
-  }
+  )
 
   isUserAlreadyLoggedIn = async () => {
     // checks for token validity
@@ -84,43 +82,35 @@ export default class App extends Component {
    );
   }
 
-  loadPackages = async () => {
-    const { search } = this.state;
-    return (
-      new Promise(async (resolve, reject) => {
-        try {
-          const packages = await API.request('packages', 'GET');
-          const transformedPackages = packages.map(({ name, ...others}) => ({
-            label: name,
-            ...others
-          }));
-
-          if (search === '') {
-            this.setState({
-              packages: transformedPackages,
-              filteredPackages: transformedPackages
-            }, () => resolve());
-          }
-        } catch (error) {
-          await this.handleShowAlertDialog({
-            title: 'Warning',
-            message: `Unable to load package list: ${error.message}`
-          });
-          reject(new Error(error));
-        }
-      })
-    );
-  }
-
-  setLoading = async (isLoading) => {
-    return (
-      new Promise((resolve) => {
+  loadPackages = async () => (
+    new Promise(async (resolve, reject) => {
+      try {
+        const packages = await API.request('packages', 'GET');
+        const transformedPackages = packages.map(({ name, ...others}) => ({
+          label: name,
+          ...others
+        }));
         this.setState({
-          isLoading
+          packages: transformedPackages,
+          filteredPackages: transformedPackages,
         }, () => resolve());
-      })
-    );
-  }
+      } catch (error) {
+        await this.handleShowAlertDialog({
+          title: 'Warning',
+          message: `Unable to load package list: ${error.message}`
+        });
+        reject(new Error(error));
+      }
+    })
+  )
+
+  setLoading = async (isLoading) => (
+    new Promise((resolve) => {
+      this.setState({
+        isLoading
+      }, () => resolve());
+    })
+  )
 
   /**
    * Toggles the login modal
@@ -185,22 +175,32 @@ export default class App extends Component {
 
   handleFetchPackages = ({ value }) => {
     this.setState({
-      filteredPackages: this.getfilteredPackages(value),
+      searchPackages: this.getfilteredPackages(value),
     });
   }
 
-  handleClearPackages = () => {
+  handlePackagesClearRequested = () => {
     this.setState({
-      filteredPackages: this.state.packages
-    });
-  }
-
-  // eslint-disable-next-line no-unused-vars
-  handleSearch = (_, { newValue }) => {
-    this.setState({
-      search: newValue,
+      searchPackages: []
     });
   };
+
+   // eslint-disable-next-line no-unused-vars
+   handleSearch = (_, { newValue }) => {
+     const { packages } = this.state;
+    this.setState({
+      search: newValue,
+      filteredPackages: newValue ? this.getfilteredPackages(newValue) : packages
+    });
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  handleClickSelPackage = (_, { suggestionValue  }) => {
+    this.setState({
+      filteredPackages: this.getfilteredPackages(suggestionValue),
+      search: suggestionValue
+    });
+  }
 
   handleShowAlertDialog = (content) => (
     new Promise((resolve => {
@@ -217,84 +217,66 @@ export default class App extends Component {
     });
   };
 
-  getfilteredPackages = (value) => {
+  getfilteredPackages = value => {
     const { packages } = this.state;
     const inputValue = deburr(value.trim()).toLowerCase();
     const inputLength = inputValue.length;
     let count = 0;
   
-    return inputLength === 0
-      ? []
-      : packages.filter(pkge => {
-          const keep = count < 5 && (
-            pkge.label.slice(0, inputLength).toLowerCase() === inputValue ||
-            pkge.version.slice(0, inputLength).toLowerCase() === inputValue ||
-            pkge.keywords.some(keyword => keyword.slice(0, inputLength).toLowerCase() === inputValue)
-          );
+    if (inputLength === 0) {
+      return [];
+    } else {
+      return packages.filter(pkge => {
+        const keep = count < 5 && (
+          pkge.label && pkge.label.slice(0, inputLength).toLowerCase() === inputValue ||
+          pkge.version && pkge.version.slice(0, inputLength).toLowerCase() === inputValue ||
+          pkge.keywords && pkge.keywords.some(keyword => keyword.slice(0, inputLength).toLowerCase() === inputValue)
+        );
+
+        if (keep) {
+          count += 1;
+        }
+
+        return keep;
+      });
+    }
+  }
   
-          if (keep) {
-            count += 1;
+  renderAlertDialog = () => (
+    <Dialog
+      open={this.state.showAlertDialog}
+      onClose={this.handleDismissAlertDialog}
+    >
+      <DialogTitle id="alert-dialog-title">
+        {this.state.alertDialogContent.title}
+      </DialogTitle>
+      <DialogContent>
+        <SnackbarContent
+          className={classes.alertError}
+          message={
+            <div
+              id="client-snackbar"
+              className={classes.alertErrorMsg}
+            >
+              <ErrorIcon className={classes.alertIcon} />
+              <span>
+                {this.state.alertDialogContent.message}
+              </span>
+            </div>
           }
-  
-          return keep;
-        });
-  }
-  
-
-  renderHeader = () => {
-    const { logoUrl, filteredPackages, user, ...others } = this.state;
-    return (
-      <Header
-        logo={logoUrl}
-        username={user.username}
-        toggleLoginModal={this.toggleLoginModal}
-        packages={filteredPackages}
-        onSearch={this.handleSearch}
-        onLogout={this.handleLogout}
-        onSuggestionsFetch={this.handleFetchPackages}
-        onCleanSuggestions={this.handleClearPackages}
-        {...others}
-      />
-    );
-  }
-
-  renderAlertDialog = () => {
-    return (
-      <Dialog
-        open={this.state.showAlertDialog}
-        onClose={this.handleDismissAlertDialog}
-      >
-        <DialogTitle id="alert-dialog-title">
-          {this.state.alertDialogContent.title}
-        </DialogTitle>
-        <DialogContent>
-          <SnackbarContent
-            className={classes.alertError}
-            message={
-              <div
-                id="client-snackbar"
-                className={classes.alertErrorMsg}
-              >
-                <ErrorIcon className={classes.alertIcon} />
-                <span>
-                  {this.state.alertDialogContent.message}
-                </span>
-              </div>
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={this.handleDismissAlertDialog}
-            color="primary"
-            autoFocus
-          >
-            Ok
-          </Button>
-        </DialogActions>
-      </Dialog>
-    );
-  }
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button
+          onClick={this.handleDismissAlertDialog}
+          color="primary"
+          autoFocus
+        >
+          Ok
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
 
   renderLoginModal = () => {
     const { error, showLoginModal } = this.state;
@@ -310,17 +292,25 @@ export default class App extends Component {
   }
 
   render() {
-    const { isUserLoggedIn, isLoading } = this.state;
+    const { isLoading, logoUrl, user, filteredPackages, ...others } = this.state;
     return (
       <div className="page-full-height">
-        <div id="header">
-          {this.renderHeader()}
-        </div>
         {this.renderLoginModal()}
         {isLoading ? (
           <Spinner centered />
         ) : (
-          <Route isUserLoggedIn={isUserLoggedIn} {...this.state} />
+          <Route
+            {...others}
+            logo={logoUrl}
+            username={user.username}
+            toggleLoginModal={this.toggleLoginModal}
+            onLogout={this.handleLogout}
+            onSearch={this.handleSearch}
+            onClick={this.handleClickSelPackage}
+            onSuggestionsFetch={this.handleFetchPackages}
+            onCleanSuggestions={this.handlePackagesClearRequested}
+            packages={filteredPackages}
+          />
         )}
         <Footer />
         {this.renderAlertDialog()}

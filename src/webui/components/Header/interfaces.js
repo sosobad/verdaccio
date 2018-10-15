@@ -5,18 +5,19 @@
 
 export interface IProps {
   username?: string;
-  onLogout: Function;
+  onLogout?: Function;
   toggleLoginModal: Function;
   scope: string;
-  search: string;
-  packages: string[];
-  onSearch: (event: SyntheticKeyboardEvent<HTMLInputElement>) => void;
+  search?: string;
+  packages?: any[];
+  withoutSearch?: boolean;
+  onSearch?: (event: SyntheticKeyboardEvent<HTMLInputElement>) => void;
 }
 
 export interface IState {
   anchorEl?: any;
   openInfoDialog: boolean;
   registryUrl: string;
-  packages: string[];
+  packages: any[];
   showMobileNavBar: boolean;
 }

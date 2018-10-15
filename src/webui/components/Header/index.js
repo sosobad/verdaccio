@@ -37,10 +37,11 @@ class Header extends Component<IProps, IState> {
 
   constructor(props: IProps) {
     super(props);
+    const { packages = [] } = props;
     this.state = {
       openInfoDialog: false,
       registryUrl: '',
-      packages: props.packages,
+      packages,
       showMobileNavBar: false,
     };
   }
@@ -124,41 +125,45 @@ class Header extends Component<IProps, IState> {
 
   renderLeftSide = (): Node => {
     const { packages } = this.state;
-    const { onSearch, search, ...others } = this.props;
+    const { onSearch = () => {}, search = '', withoutSearch = false, ...others } = this.props;
     return (
       <LeftSide>
         <Link to="/">
           <Logo />
         </Link>
-        <Search>
-          <AutoComplete
-            suggestions={packages.map(pkage => ({ label: pkage }))}
-            onChange={onSearch}
-            value={search}
-            placeholder="Search packages"
-            color={colors.white}
-            startAdornment={
-              <InputAdornment position="start" style={{ color: colors.white }}>
-                <IconSearch />
-              </InputAdornment>
-            }
-            {...others}
-          />
-        </Search>
+        {!withoutSearch && (
+          <Search>
+            <AutoComplete
+              suggestions={packages}
+              onChange={onSearch}
+              value={search}
+              placeholder="Search packages"
+              color={colors.white}
+              startAdornment={
+                <InputAdornment position="start" style={{ color: colors.white }}>
+                  <IconSearch />
+                </InputAdornment>
+              }
+              {...others}
+            />
+          </Search>
+        )}
       </LeftSide>
     );
   };
 
   renderRightSide = (): Node => {
-    const { username = '' } = this.props;
+    const { username = '', withoutSearch = false } = this.props;
     const installationLink = 'https://verdaccio.org/docs/en/installation';
     return (
       <RightSide>
-        <Tooltip title="Search packages" disableFocusListener>
-          <IconSearchButton color="inherit" onClick={this.handleToggleMNav}>
-            <IconSearch />
-          </IconSearchButton>
-        </Tooltip>
+        {!withoutSearch && (
+          <Tooltip title="Search packages" disableFocusListener>
+            <IconSearchButton color="inherit" onClick={this.handleToggleMNav}>
+              <IconSearch />
+            </IconSearchButton>
+          </Tooltip>
+        )}
         <Tooltip title="Documentation" disableFocusListener>
           <IconButton color="inherit" component={Link} to={installationLink} blank>
             <Help />
@@ -189,7 +194,7 @@ class Header extends Component<IProps, IState> {
     const open = Boolean(anchorEl);
     return (
       <React.Fragment>
-        <IconButton id="header--button-account" color="inherit" onClick={this.handleToggleMNav}>
+        <IconButton id="header--button-account" color="inherit" onClick={this.handleLoggedInMenu}>
           <AccountCircle />
         </IconButton>
         <Menu
@@ -229,7 +234,7 @@ class Header extends Component<IProps, IState> {
 
   render() {
     const { packages, showMobileNavBar } = this.state;
-    const { onSearch, search, ...others } = this.props;
+    const { onSearch = () => {}, search = '', withoutSearch = false, ...others } = this.props;
     return (
       <div>
         <NavBar position="static">
@@ -239,23 +244,17 @@ class Header extends Component<IProps, IState> {
           </InnerNavBar>
           {this.renderInfoDialog()}
         </NavBar>
-        {showMobileNavBar && (
-          <MobileNavBar>
-            <InnerMobileNavBar>
-              <AutoComplete
-                suggestions={packages.map(pkg => ({ label: pkg }))}
-                onChange={onSearch}
-                value={search}
-                placeholder="Search packages"
-                disableUnderline
-                {...others}
-              />
-            </InnerMobileNavBar>
-            <Button id="header--button-login" color="inherit" onClick={this.handleDismissMNav}>
-              Cancel
-            </Button>
-          </MobileNavBar>
-        )}
+        {showMobileNavBar &&
+          !withoutSearch && (
+            <MobileNavBar>
+              <InnerMobileNavBar>
+                <AutoComplete suggestions={packages} onChange={onSearch} value={search} placeholder="Search packages" disableUnderline {...others} />
+              </InnerMobileNavBar>
+              <Button id="header--button-login" color="inherit" onClick={this.handleDismissMNav}>
+                Cancel
+              </Button>
+            </MobileNavBar>
+          )}
       </div>
     );
   }
